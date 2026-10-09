@@ -1,35 +1,11 @@
 import 'package:dio/dio.dart';
+import 'package:feirasystem/core/apiClient.dart';
 import 'package:feirasystem/feira/feiraModel.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class FeiraService {
   final Dio _dio;
 
-  FeiraService([Dio? dio])
-      : _dio = dio ??
-            Dio(BaseOptions(
-              baseUrl: 'http://localhost:3000',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-            )) {
-    _dio.interceptors.add(InterceptorsWrapper(
-      onRequest: (options, handler) async {
-        final prefs = await SharedPreferences.getInstance();
-        String? token = prefs.getString('auth_token');
-        if (token != null) {
-          options.headers['Authorization'] = 'Bearer $token';
-        }
-        return handler.next(options);
-      },
-      onError: (DioException e, handler) {
-        if (e.response?.statusCode == 401) {
-          // TO DO: INVALID/EXPIRED TOKEN
-        }
-        return handler.next(e);
-      },
-    ));
-  }
+  FeiraService([Dio? dio]) : _dio = dio ?? ApiClient.dio;
 
   Future<List<Feira>> getFeiras() async {
     try {

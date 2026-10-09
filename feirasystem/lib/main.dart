@@ -17,10 +17,15 @@ import 'package:feirasystem/localidade/localidadeWidget.dart';
 import 'package:feirasystem/professor/professorWidget.dart';
 import 'package:feirasystem/sublocalidade/sublocalidadeWidget.dart';
 import 'package:feirasystem/homepage/homePageWidget.dart';
+import 'package:feirasystem/core/appRoutes.dart';
+import 'package:feirasystem/core/sessionService.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  // Restaura a sessão salva antes de abrir a primeira tela.
+  await SessionService.instance.carregar();
   runApp(const ExpoUT());
 }
 
@@ -126,79 +131,75 @@ class ExpoUT extends StatelessWidget {
       supportedLocales: const [
         Locale('pt', 'BR'),
       ],
+      navigatorKey: navigatorKey,
       onGenerateRoute: gerarRotaComAnimacao,
-      initialRoute: '',
+      initialRoute: Rotas.inicio(),
     );
   }
 }
 
-Route<dynamic> gerarRotaComAnimacao(RouteSettings settings) {
-  late final Widget pagina;
-
-  switch (settings.name) {
-    case '':
-      pagina = const Pessoas();
-      break;
-    case 'homePage':
-      pagina = const HomePage();
-      break;
-    case 'organizador':
-      pagina = const HomePageOrganizador();
-      break;
-    case 'monitor':
-      pagina = const HomePageMonitor();
-      break;
-    case 'cadastro':
-      pagina = const Cadastro();
-      break;
+/// Devolve a tela da rota [nome], ou `null` se a rota não existe.
+Widget? _paginaPara(String nome) {
+  switch (nome) {
+    case Rotas.boasVindas:
+      return const Pessoas();
+    case Rotas.homePage:
+      return const HomePage();
+    case Rotas.organizador:
+      return const HomePageOrganizador();
+    case Rotas.monitor:
+      return const HomePageMonitor();
+    case Rotas.cadastro:
+      return const Cadastro();
     case 'cadastro/localidade':
-      pagina = const Localidades();
-      break;
+      return const Localidades();
     case 'cadastro/sublocalidade':
-      pagina = const Sublocalidades();
-      break;
+      return const Sublocalidades();
     case 'cadastro/atividade':
-      pagina = const Atividades();
-      break;
+      return const Atividades();
     case 'cadastro/feira':
-      pagina = const Feiras();
-      break;
+      return const Feiras();
     case 'cadastro/agendamentofeira':
-      pagina = const AgendamentosFeira();
-      break;
+      return const AgendamentosFeira();
     case 'cadastro/departamento':
-      pagina = const Departamentos();
-      break;
+      return const Departamentos();
     case 'cadastro/professor':
-      pagina = const Professores();
-      break;
+      return const Professores();
     case 'cadastro/agendamentoAtividadeFeira':
-      pagina = const AgendamentosAtividadeFeira();
-      break;
-    case 'usuario/login':
-      pagina = const Login();
-      break;
-    case 'usuario/organizador':
-      pagina = const Organizadores();
-      break;
-    case 'usuario/monitor':
-      pagina = const Monitores();
-      break;
-    case 'usuario/perfil/organizador':
-      pagina = const PerfilOrganizadores();
-      break;
-    case 'usuario/perfil/monitor':
-      pagina = const PerfilMonitores();
-      break;
+      return const AgendamentosAtividadeFeira();
+    case Rotas.login:
+      return const Login();
+    case Rotas.cadastroOrganizador:
+      return const Organizadores();
+    case Rotas.cadastroMonitor:
+      return const Monitores();
+    case Rotas.perfilOrganizador:
+      return const PerfilOrganizadores();
+    case Rotas.perfilMonitor:
+      return const PerfilMonitores();
     case 'monitor/atividades':
-      pagina = const MonitorAtividades();
-      break;
+      return const MonitorAtividades();
+    default:
+      return null;
   }
+}
+
+Route<dynamic> gerarRotaComAnimacao(RouteSettings settings) {
+  var nome = settings.name ?? Rotas.boasVindas;
+  var pagina = _paginaPara(nome);
+
+  // Rota inexistente ou sem permissão (não logado / tipo errado): redireciona.
+  final destino = pagina == null ? Rotas.inicio() : Rotas.redirecionar(nome);
+  if (destino != null) {
+    nome = destino;
+    pagina = _paginaPara(destino);
+  }
+  final Widget tela = pagina ?? const Pessoas();
 
   return PageRouteBuilder(
-    settings: settings,
+    settings: RouteSettings(name: nome, arguments: settings.arguments),
     transitionDuration: const Duration(milliseconds: 300),
-    pageBuilder: (_, __, ___) => pagina,
+    pageBuilder: (_, __, ___) => tela,
     transitionsBuilder: (_, animation, __, child) {
       final curvedAnimation = CurvedAnimation(
         parent: animation,

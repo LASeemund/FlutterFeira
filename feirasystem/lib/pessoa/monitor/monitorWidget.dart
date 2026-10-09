@@ -2,6 +2,8 @@ import 'package:feirasystem/assets/customSnackBar.dart';
 import 'package:flutter/material.dart';
 import 'package:feirasystem/assets/formFields/passwordField.dart';
 import 'package:feirasystem/assets/formFields/phoneField.dart';
+import 'package:feirasystem/assets/formFields/cpfField.dart';
+import 'package:feirasystem/pessoa/pessoaService.dart';
 
 class Monitores extends StatefulWidget {
   const Monitores({super.key});
@@ -14,7 +16,7 @@ class _MonitoresState extends State<Monitores> {
   final TextEditingController _controladorNome = TextEditingController();
   final TextEditingController _controladorCelular = TextEditingController();
   final TextEditingController _controladorEmail = TextEditingController();
-  final TextEditingController _controladorRa = TextEditingController();
+  final TextEditingController _controladorCpf = TextEditingController();
   final TextEditingController _controladorSenha = TextEditingController();
   final TextEditingController _controladorCSenha = TextEditingController();
 
@@ -22,18 +24,22 @@ class _MonitoresState extends State<Monitores> {
     String nome = _controladorNome.text.trim();
     String celular = _controladorCelular.text.trim();
     String email = _controladorEmail.text.trim();
-    String ra = _controladorRa.text.trim();
-    String senha = _controladorSenha.text.trim();
-    String csenha = _controladorCSenha.text.trim();
+    String cpf = _controladorCpf.text.trim();
+    String senha = _controladorSenha.text;
+    String csenha = _controladorCSenha.text;
 
     if (nome.isEmpty ||
         celular.isEmpty ||
         email.isEmpty ||
-        ra.isEmpty ||
+        cpf.isEmpty ||
         senha.isEmpty ||
         csenha.isEmpty) {
       showCustomSnackBar(context, 'Preencha todos os campos obrigatórios!',
           tipo: 'erro', duracao: 1);
+      return false;
+    }
+    if (!CpfField.cpfValido(cpf)) {
+      showCustomSnackBar(context, 'CPF inválido.', tipo: 'erro', duracao: 1);
       return false;
     }
     final emailRegex =
@@ -56,14 +62,43 @@ class _MonitoresState extends State<Monitores> {
     return true;
   }
 
-  bool _cadastrar() {
-    if (_validarForm()) {
+  final PessoaService _service = PessoaService();
+  bool _carregando = false;
+
+  @override
+  void dispose() {
+    _controladorNome.dispose();
+    _controladorCpf.dispose();
+    _controladorCelular.dispose();
+    _controladorEmail.dispose();
+    _controladorSenha.dispose();
+    _controladorCSenha.dispose();
+    super.dispose();
+  }
+
+  Future<void> _cadastrar() async {
+    if (_carregando || !_validarForm()) return;
+
+    setState(() => _carregando = true);
+    try {
+      await _service.cadastrar(
+        nome: _controladorNome.text.trim(),
+        cpf: _controladorCpf.text,
+        celular: _controladorCelular.text.trim(),
+        email: _controladorEmail.text.trim(),
+        senha: _controladorSenha.text,
+        tipoPessoa: 'MONITOR',
+      );
+      if (!mounted) return;
       showCustomSnackBar(context, 'Cadastrado com sucesso!',
           tipo: 'sucesso', duracao: 2);
-      Navigator.pushNamed(context, 'monitor');
-      return true;
+      Navigator.pushReplacementNamed(context, 'usuario/login');
+    } on PessoaException catch (e) {
+      if (!mounted) return;
+      showCustomSnackBar(context, e.mensagem, tipo: 'erro', duracao: 3);
+    } finally {
+      if (mounted) setState(() => _carregando = false);
     }
-    return false;
   }
 
   @override
@@ -124,19 +159,7 @@ class _MonitoresState extends State<Monitores> {
                       maxWidth: 400,
                       minWidth: 200,
                     ),
-                    child: TextFormField(
-                      controller: _controladorRa,
-                      decoration: const InputDecoration(
-                        labelText: 'Registro Acadêmico (RA)',
-                      ),
-                      keyboardType: TextInputType.number,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return '';
-                        }
-                        return null;
-                      },
-                    ),
+                    child: CpfField(controller: _controladorCpf),
                   ),
                   const SizedBox(height: 16),
                   ConstrainedBox(
@@ -190,11 +213,19 @@ class _MonitoresState extends State<Monitores> {
                   ),
                   const SizedBox(height: 24),
                   ElevatedButton(
-                    onPressed: () {
-                      _formKey.currentState!.validate();
-                      _cadastrar();
-                    },
-                    child: const Text('Cadastrar'),
+                    onPressed: _carregando
+                        ? null
+                        : () {
+                            _formKey.currentState!.validate();
+                            _cadastrar();
+                          },
+                    child: _carregando
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Text('Cadastrar'),
                   )
                 ],
               ),

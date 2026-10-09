@@ -1,14 +1,12 @@
 import 'package:dio/dio.dart';
+import 'package:feirasystem/core/apiClient.dart';
 import 'monitorAtividadeModel.dart'; 
 import 'ponto_atividade_dto.dart'; 
 import 'dart:async'; 
 
 class PontoService {
-  final Dio _dio = Dio();
+  final Dio _dio = ApiClient.dio;
   final Map<int, bool> _checkInStatus = {};
-
-  // ⚠️ Mesmo IP e Porta do outro arquivo
-  final String baseUrl = 'http://localhost:3000';
 
   bool isMonitorCheckedIn(int idAgendamento) {
     return _checkInStatus[idAgendamento] ?? false;
@@ -44,12 +42,10 @@ class PontoService {
     }
 
     try {
-      print("Enviando PUT para: $baseUrl/monitores/atividade/$idRegistro");
-      print("Dados: $bodyBackend");
 
       // ENVIO REAL (PUT)
       await _dio.put(
-        '$baseUrl/monitores/atividade/$idRegistro', 
+        '/monitores/atividade/$idRegistro', 
         data: bodyBackend
       );
 
@@ -68,7 +64,6 @@ class PontoService {
       );
 
     } catch (e) {
-      print("Erro ao enviar ponto: $e");
       throw Exception("Falha na comunicação com o servidor.");
     }
   }

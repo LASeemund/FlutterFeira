@@ -1,39 +1,16 @@
 import 'package:dio/dio.dart';
+import 'package:feirasystem/core/apiClient.dart';
 import 'package:feirasystem/atividade/atividadeModel.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class AtividadeService {
   final Dio _dio;
 
-  AtividadeService([Dio? dio])
-      : _dio = dio ??
-            Dio(BaseOptions(
-              baseUrl: 'http://localhost:3000',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-            )) {
-    _dio.interceptors.add(
-      InterceptorsWrapper(
-        onRequest: (options, handler) async {
-          final prefs = await SharedPreferences.getInstance();
-          final token = prefs.getString('auth_token');
-
-          if (token != null) {
-            options.headers['Authorization'] = 'Bearer $token';
-          }
-          return handler.next(options);
-        },
-      ),
-    );
-  }
+  AtividadeService([Dio? dio]) : _dio = dio ?? ApiClient.dio;
 
   Future<List<Atividade>> getAtividades() async {
     try {
       final response = await _dio.get('/atividades');
 
-      print('STATUS CODE: ${response.statusCode}');
-      print('DATA BRUTA: ${response.data}');
 
       final data = response.data;
 
@@ -49,7 +26,6 @@ class AtividadeService {
 
       return [];
     } catch (e) {
-      print('ERRO SERVICE: $e');
       rethrow;
     }
   }

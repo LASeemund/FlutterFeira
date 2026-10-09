@@ -1,35 +1,11 @@
 import 'package:dio/dio.dart';
+import 'package:feirasystem/core/apiClient.dart';
 import 'package:feirasystem/departamento/departamentoModel.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class DepartamentoService {
   final Dio _dio;
 
-  DepartamentoService([Dio? dio])
-      : _dio = dio ??
-            Dio(BaseOptions(
-              baseUrl: 'http://localhost:3000', // Defina a URL base da API
-              headers: {
-                'Content-Type': 'application/json',
-              },
-            )) {
-    _dio.interceptors.add(InterceptorsWrapper(
-      onRequest: (options, handler) async {
-        final prefs = await SharedPreferences.getInstance();
-        String? token = prefs.getString('auth_token');
-        if (token != null) {
-          options.headers['Authorization'] = 'Bearer $token';
-        }
-        return handler.next(options);
-      },
-      onError: (DioException e, handler) {
-        if (e.response?.statusCode == 401) {
-          // TO DO: INVALID/EXPIRED TOKEN
-        }
-        return handler.next(e);
-      },
-    ));
-  }
+  DepartamentoService([Dio? dio]) : _dio = dio ?? ApiClient.dio;
 
   Future<List<Departamento>> getDepartamentos() async {
     try {
@@ -72,8 +48,6 @@ class DepartamentoService {
         },
       );
 
-      print('STATUS: ${response.statusCode}');
-      print('DATA: ${response.data}');
     } catch (e) {
       throw 'Erro ao criar departamento: $e';
     }

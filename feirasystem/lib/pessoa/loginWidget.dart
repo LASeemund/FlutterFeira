@@ -1,6 +1,8 @@
 import 'package:feirasystem/assets/customSnackBar.dart';
 import 'package:flutter/material.dart';
 import 'package:feirasystem/assets/formFields/passwordField.dart';
+import 'package:feirasystem/core/appRoutes.dart';
+import 'package:feirasystem/pessoa/pessoaService.dart';
 
 class Login extends StatefulWidget {
   const Login({super.key});
@@ -15,7 +17,7 @@ class _LoginState extends State<Login> {
 
   bool _validarForm() {
     String email = _controladorEmail.text.trim();
-    String senha = _controladorSenha.text.trim();
+    String senha = _controladorSenha.text;
 
     if (email.isEmpty || senha.isEmpty) {
       showCustomSnackBar(
@@ -32,14 +34,56 @@ class _LoginState extends State<Login> {
     return true;
   }
 
-  bool _loginSucesso() {
-    if (_validarForm()) {
+  final PessoaService _service = PessoaService();
+  bool _carregando = false;
+
+  bool _avisoExibido = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_avisoExibido) return;
+    _avisoExibido = true;
+    final aviso = ModalRoute.of(context)?.settings.arguments;
+    if (aviso is String) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          showCustomSnackBar(context, aviso, tipo: 'erro', duracao: 3);
+        }
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _controladorEmail.dispose();
+    _controladorSenha.dispose();
+    super.dispose();
+  }
+
+  Future<void> _login() async {
+    if (_carregando || !_validarForm()) return;
+
+    setState(() => _carregando = true);
+    try {
+      await _service.login(
+        _controladorEmail.text.trim(),
+        _controladorSenha.text,
+      );
+      if (!mounted) return;
       showCustomSnackBar(context, 'Autenticado com sucesso!',
           tipo: 'sucesso', duracao: 1);
-      Navigator.pushNamed(context, 'homePage');
-      return true;
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        Rotas.homeDoUsuario(),
+        (_) => false,
+      );
+    } on PessoaException catch (e) {
+      if (!mounted) return;
+      showCustomSnackBar(context, e.mensagem, tipo: 'erro');
+    } finally {
+      if (mounted) setState(() => _carregando = false);
     }
-    return false;
   }
 
   @override
@@ -101,10 +145,14 @@ class _LoginState extends State<Login> {
                   ),
                   const SizedBox(height: 24),
                   ElevatedButton(
-                    onPressed: () {
-                      _loginSucesso();
-                    },
-                    child: const Text('Entrar'),
+                    onPressed: _carregando ? null : _login,
+                    child: _carregando
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Text('Entrar'),
                   )
                 ],
               ),

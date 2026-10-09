@@ -3,6 +3,8 @@ import 'package:feirasystem/assets/customSnackBar.dart';
 import 'package:flutter/material.dart';
 import 'package:feirasystem/assets/formFields/passwordField.dart';
 import 'package:feirasystem/assets/formFields/phoneField.dart';
+import 'package:feirasystem/assets/formFields/cpfField.dart';
+import 'package:feirasystem/pessoa/pessoaService.dart';
 
 class Organizadores extends StatefulWidget {
   const Organizadores({super.key});
@@ -13,6 +15,7 @@ class Organizadores extends StatefulWidget {
 class _OrganizadoresState extends State<Organizadores> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _controladorNome = TextEditingController();
+  final TextEditingController _controladorCpf = TextEditingController();
   final TextEditingController _controladorCelular = TextEditingController();
   final TextEditingController _controladorEmail = TextEditingController();
   final TextEditingController _controladorSenha = TextEditingController();
@@ -20,18 +23,24 @@ class _OrganizadoresState extends State<Organizadores> {
 
   bool _validarForm() {
     String nome = _controladorNome.text.trim();
+    String cpf = _controladorCpf.text.trim();
     String celular = _controladorCelular.text.trim();
     String email = _controladorEmail.text.trim();
-    String senha = _controladorSenha.text.trim();
-    String csenha = _controladorCSenha.text.trim();
+    String senha = _controladorSenha.text;
+    String csenha = _controladorCSenha.text;
 
     if (nome.isEmpty ||
+        cpf.isEmpty ||
         celular.isEmpty ||
         email.isEmpty ||
         senha.isEmpty ||
         csenha.isEmpty) {
       showCustomSnackBar(context, 'Preencha todos os campos obrigatórios!',
           tipo: 'erro', duracao: 1);
+      return false;
+    }
+    if (!CpfField.cpfValido(cpf)) {
+      showCustomSnackBar(context, 'CPF inválido.', tipo: 'erro', duracao: 1);
       return false;
     }
     final emailRegex =
@@ -54,13 +63,49 @@ class _OrganizadoresState extends State<Organizadores> {
     return true;
   }
 
-  bool _cadastrar() {
-    if (_validarForm()) {
+  final PessoaService _service = PessoaService();
+  bool _carregando = false;
+
+  @override
+  void dispose() {
+    _controladorNome.dispose();
+    _controladorCpf.dispose();
+    _controladorCelular.dispose();
+    _controladorEmail.dispose();
+    _controladorSenha.dispose();
+    _controladorCSenha.dispose();
+    super.dispose();
+  }
+
+  Future<void> _cadastrar() async {
+    if (_carregando || !_validarForm()) return;
+
+    setState(() => _carregando = true);
+    try {
+      await _service.cadastrar(
+        nome: _controladorNome.text.trim(),
+        cpf: _controladorCpf.text,
+        celular: _controladorCelular.text.trim(),
+        email: _controladorEmail.text.trim(),
+        senha: _controladorSenha.text,
+        tipoPessoa: 'ORGANIZADOR',
+      );
+      if (!mounted) return;
       showCustomSnackBar(context, 'Cadastrado com sucesso!',
           tipo: 'sucesso', duracao: 2);
-      return true;
+      _formKey.currentState!.reset();
+      _controladorNome.clear();
+      _controladorCpf.clear();
+      _controladorCelular.clear();
+      _controladorEmail.clear();
+      _controladorSenha.clear();
+      _controladorCSenha.clear();
+    } on PessoaException catch (e) {
+      if (!mounted) return;
+      showCustomSnackBar(context, e.mensagem, tipo: 'erro', duracao: 3);
+    } finally {
+      if (mounted) setState(() => _carregando = false);
     }
-    return false;
   }
 
   @override
@@ -121,6 +166,14 @@ class _OrganizadoresState extends State<Organizadores> {
                       maxWidth: 400,
                       minWidth: 200,
                     ),
+                    child: CpfField(controller: _controladorCpf),
+                  ),
+                  const SizedBox(height: 16),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      maxWidth: 400,
+                      minWidth: 200,
+                    ),
                     child: PhoneField(controller: _controladorCelular),
                   ),
                   const SizedBox(height: 16),
@@ -167,11 +220,19 @@ class _OrganizadoresState extends State<Organizadores> {
                   ),
                   const SizedBox(height: 24),
                   ElevatedButton(
-                    onPressed: () {
-                      _formKey.currentState!.validate();
-                      _cadastrar();
-                    },
-                    child: const Text('Cadastrar'),
+                    onPressed: _carregando
+                        ? null
+                        : () {
+                            _formKey.currentState!.validate();
+                            _cadastrar();
+                          },
+                    child: _carregando
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Text('Cadastrar'),
                   )
                 ],
               ),

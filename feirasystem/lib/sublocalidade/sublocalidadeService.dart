@@ -1,35 +1,11 @@
 import 'package:dio/dio.dart';
+import 'package:feirasystem/core/apiClient.dart';
 import 'package:feirasystem/sublocalidade/sublocalidadeModel.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class SublocalidadeService {
   final Dio _dio;
 
-  SublocalidadeService([Dio? dio])
-      : _dio = dio ??
-            Dio(BaseOptions(
-              baseUrl: 'http://localhost:3000',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-            )) {
-    _dio.interceptors.add(InterceptorsWrapper(
-      onRequest: (options, handler) async {
-        final prefs = await SharedPreferences.getInstance();
-        String? token = prefs.getString('auth_token');
-        if (token != null) {
-          options.headers['Authorization'] = 'Bearer $token';
-        }
-        return handler.next(options);
-      },
-      onError: (DioException e, handler) {
-        if (e.response?.statusCode == 401) {
-          // TO DO: INVALID/EXPIRED TOKEN
-        }
-        return handler.next(e);
-      },
-    ));
-  }
+  SublocalidadeService([Dio? dio]) : _dio = dio ?? ApiClient.dio;
 
   Future<List<Sublocalidade>> getSublocalidades() async {
     try {

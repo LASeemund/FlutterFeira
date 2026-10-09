@@ -1,49 +1,40 @@
 import 'package:dio/dio.dart';
+import 'package:feirasystem/core/apiClient.dart';
 import 'package:feirasystem/monitorAtividade/monitorAtividadeModel.dart';
 
 class MonitorAtividadeService {
-  final Dio _dio = Dio();
+  final Dio _dio;
 
-  
-  final String baseUrl = 'http://localhost:3000'; 
+  MonitorAtividadeService([Dio? dio]) : _dio = dio ?? ApiClient.dio;
 
-  Future<List<MonitorAtividade>> getMonitorAtividadesPorMonitor(int idMonitor) async {
+  Future<List<MonitorAtividade>> getMonitorAtividadesPorMonitor(
+      int idMonitor) async {
     try {
-      print("🔍 Buscando TODAS as atividades no backend...");
-      
-      // Chama a rota correta
-      final response = await _dio.get('$baseUrl/monitores/atividade');
+      final response = await _dio.get('/monitores/atividade');
 
       if (response.statusCode == 200) {
-        
         List<dynamic> listaCompleta = response.data['monitorAtividades'];
-        
-        print("📦 Dados recebidos do Banco: $listaCompleta");
-        
-        return listaCompleta.map((json) => MonitorAtividade.fromJson(json)).toList();
+        return listaCompleta
+            .map((json) => MonitorAtividade.fromJson(json))
+            .toList();
       } else {
         throw Exception('Erro ao carregar atividades: ${response.statusCode}');
       }
-    } catch (e) {
-      print("❌ Erro na conexão GET: $e");
+    } catch (_) {
       throw Exception('Não foi possível conectar ao servidor.');
     }
   }
-  
 
-  
   Future<bool> trocarStatusDaSala(int idAtividade, String novoStatus) async {
     try {
-      
       final response = await _dio.put(
-        '$baseUrl/atividades/$idAtividade',
+        '/atividades/$idAtividade',
         data: {'status': novoStatus},
       );
 
       return response.statusCode == 200;
-    } catch (e) {
-      print("Erro ao trocar status: $e");
+    } catch (_) {
       return false;
     }
   }
-} // Fim da classe
+}

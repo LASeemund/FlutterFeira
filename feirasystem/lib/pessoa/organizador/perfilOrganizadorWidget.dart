@@ -2,6 +2,8 @@ import 'package:feirasystem/assets/bottomAppBarOrganizador.dart';
 import 'package:feirasystem/assets/customSnackBar.dart';
 import 'package:feirasystem/assets/formFields/passwordField.dart';
 import 'package:feirasystem/assets/formFields/phoneField.dart';
+import 'package:feirasystem/core/appRoutes.dart';
+import 'package:feirasystem/core/sessionService.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -194,14 +196,38 @@ class _PerfilOrganizadoresState extends State<PerfilOrganizadores> {
     );
 
     if (confirm == true) {
-      // TO DO - API CONNECTION
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.clear();
-      await _getSharedPreferences();
-      Navigator.pushNamedAndRemoveUntil(
-          context, '', (Route<dynamic> route) => false);
+      await SessionService.instance.encerrar();
+      if (!mounted) return;
       showCustomSnackBar(context, 'Sua conta foi excluída com sucesso.');
+      Navigator.pushNamedAndRemoveUntil(
+          context, Rotas.boasVindas, (Route<dynamic> route) => false);
     }
+  }
+
+  Future<void> _sair() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Sair da conta'),
+        content: const Text('Deseja realmente sair?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Sair'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+    await SessionService.instance.encerrar();
+    if (!mounted) return;
+    Navigator.pushNamedAndRemoveUntil(
+        context, Rotas.boasVindas, (Route<dynamic> route) => false);
   }
 
   @override
@@ -264,6 +290,12 @@ class _PerfilOrganizadoresState extends State<PerfilOrganizadores> {
                   onPressed: _deleteConta,
                   label: const Text('Excluir sua conta'),
                   icon: const Icon(Icons.delete),
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton.icon(
+                  onPressed: _sair,
+                  label: const Text('Sair'),
+                  icon: const Icon(Icons.logout),
                 ),
               ],
             ),
